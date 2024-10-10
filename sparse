@@ -1,0 +1,103 @@
+class SparseMatrix:
+    def __init__(self, file_path):
+        self.elements = {}  # Dictionary to store non-zero elements
+        self.rows = 0
+        self.cols = 0
+        self.load_from_file(file_path)
+
+    def load_from_file(self, file_path):
+        """Load the sparse matrix from a file."""
+        with open(file_path, 'r') as file:
+            lines = file.readlines()
+            self.rows = int(lines[0].split('=')[1].strip())
+            self.cols = int(lines[1].split('=')[1].strip())
+            
+            for line in lines[2:]:
+                if line.strip():
+                    row, col, value = map(int, line.strip()[1:-1].split(','))
+                    self.elements[(row, col)] = value
+
+    def get_element(self, row, col):
+        """Get the value at a specific (row, col)."""
+        return self.elements.get((row, col), 0)
+
+    def set_element(self, row, col, value):
+        """Set the value at a specific (row, col)."""
+        if value != 0:
+            self.elements[(row, col)] = value
+
+    def add(self, other):
+        """Add two sparse matrices."""
+        result = SparseMatrix.empty(self.rows, self.cols)
+        # Add all non-zero elements of this matrix
+        for (row, col), value in self.elements.items():
+            result.set_element(row, col, value + other.get_element(row, col))
+        # Add remaining elements of the other matrix
+        for (row, col), value in other.elements.items():
+            if (row, col) not in self.elements:
+                result.set_element(row, col, value)
+        return result
+
+    def subtract(self, other):
+        """Subtract another sparse matrix from this one."""
+        result = SparseMatrix.empty(self.rows, self.cols)
+        # Subtract all non-zero elements of this matrix
+        for (row, col), value in self.elements.items():
+            result.set_element(row, col, value - other.get_element(row, col))
+        # Subtract remaining elements of the other matrix
+        for (row, col), value in other.elements.items():
+            if (row, col) not in self.elements:
+                result.set_element(row, col, -value)
+        return result
+
+    def multiply(self, other):
+        """Multiply two sparse matrices."""
+        if self.cols != other.rows:
+            raise ValueError("Matrix dimensions are not compatible for multiplication.")
+        
+        result = SparseMatrix.empty(self.rows, other.cols)
+        # Multiply elements based on matrix multiplication rules
+        for (row, col), value in self.elements.items():
+            for k in range(other.cols):
+                if other.get_element(col, k) != 0:
+                    result.set_element(row, k, result.get_element(row, k) + value * other.get_element(col, k))
+        return result
+
+    @staticmethod
+    def empty(rows, cols):
+        """Create an empty sparse matrix with the given dimensions."""
+        empty_matrix = SparseMatrix.__new__(SparseMatrix)
+        empty_matrix.rows = rows
+        empty_matrix.cols = cols
+        empty_matrix.elements = {}
+        return empty_matrix
+
+    def save_to_file(self, file_path):
+        """Save the sparse matrix to a file."""
+        with open(file_path, 'w') as file:
+            file.write(f"rows={self.rows}\n")
+            file.write(f"cols={self.cols}\n")
+            for (row, col), value in self.elements.items():
+                file.write(f"({row}, {col}, {value})\n")
+
+
+# Main function to load matrices and perform operations
+if __name__ == "__main__":
+    matrix1 = SparseMatrix('sample_inputs/matrix1.txt')
+    matrix2 = SparseMatrix('sample_inputs/matrix2.txt')
+
+    operation = input("Choose an operation: add, subtract, multiply: ").strip().lower()
+
+    if operation == "add":
+        result = matrix1.add(matrix2)
+    elif operation == "subtract":
+        result = matrix1.subtract(matrix2)
+    elif operation == "multiply":
+        result = matrix1.multiply(matrix2)
+    else:
+        print("Invalid operation selected.")
+        exit(1)
+
+    result.save_to_file('output_matrix.txt')
+    print("Operation completed. Result saved to 'output_matrix.txt'.")
+
